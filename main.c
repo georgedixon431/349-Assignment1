@@ -5,45 +5,65 @@
 #include "input.h"
 #include "sort.h"
 
-mtx_t list_mutex;
-int running = 1;
+
+mtx_t list_mutex; //Shared mutex used to protect the linked list and running flag
+int running = 1; //to tell input and sort when to stop
 
 int main(void) {
     CRIC *head = NULL;
     
 
     // TODO: start the reading/input thread
-    mtx_init(&list_mutex, mtx_plain);
-    thrd_t input_thread;
+    // e.g. thrd_create()
+    if (mtx_init(&list_mutex, mtx_plain) != thrd_success) {
+        printf("Failed to initialise mutex\n");
+        return 1;
+    } //Initialise the mutex before creating any worker threads
+
+    thrd_t input_thread; //start input thread
     if (thrd_create(&input_thread, process_input, &head) != thrd_success) {
         printf("Failed to create input thread\n");
         return 1;
     }
-    // e.g. thrd_create()
 
     // TODO: start the sorting thread
     // e.g. thrd_create()
-    thrd_t sort_thread;
+    thrd_t sort_thread; //Start the sorting thread
     if (thrd_create(&sort_thread, process_sort, &head) != thrd_success){
         printf("Failed to create sorting thread\n");
+        // Tell the input thread to stop before cleaning up
+        mtx_lock(&list_mutex);
+        running = 0;
+        mtx_unlock(&list_mutex);
+        thrd_join(input_thread, NULL);
+        mtx_destroy(&list_mutex);
+
         return 1;
     }
-
-
+    
     // TODO: loop forever until user presses 'q'
     // TODO: print the list if any other key is pressed
     char input;
 
+    //wait for keyboard input
     while (1){
         input = getchar();
-        if (input =='\n'){
+
+        // Stop cleanly if standard input is closed
+        if (input == EOF) {
+            mtx_lock(&list_mutex);
+            running = 0;
+            mtx_unlock(&list_mutex);
+            break;
+        }
+        if (input =='\n'){ //ignore newline when enter pressed
             continue;
         }
-        if (input == 'q'){
+        if (input == 'q'){ //q tells program to stop
             running =0;
             break;
         }
-        mtx_lock(&list_mutex);
+        mtx_lock(&list_mutex); //lock list while printing
         //linked list
         CRIC *current = head;
         while(current != NULL){
@@ -66,7 +86,7 @@ int main(void) {
 
     // Free all players in the linked list
     CRIC *current = head;
-
+    
     while (current != NULL) {
         CRIC *next = current->next;
         free(current->name);

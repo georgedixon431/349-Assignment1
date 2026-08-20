@@ -8,9 +8,8 @@
 extern mtx_t list_mutex; 
 extern int running;
 
-/*
- * Read a line of data from the file and create a player based on that data.
- */
+
+// Read a line of data from the file and create a player based on that data.
 static CRIC *read_one_player(FILE *infile) {
     char line[255];
 
@@ -24,9 +23,9 @@ static CRIC *read_one_player(FILE *infile) {
     return enter_player(line);
 }
 
-/*
- * Open input file and turn a line of data into a cricketer every second.
- */
+
+// Open input file and turn a line of data into a cricketer every second.
+ 
 int process_input(void *arg) {
     CRIC **head;
     FILE *infile;
@@ -42,7 +41,19 @@ int process_input(void *arg) {
         exit(EXIT_FAILURE);
     }
 
-    while (running) {
+    while (1) {
+
+        
+        // Check whether main has requested shutdown.
+        // The flag is protected by the same mutex as the linked list.
+        mtx_lock(&list_mutex);
+
+        if (!running) {
+            mtx_unlock(&list_mutex);
+            break;
+        }
+
+        mtx_unlock(&list_mutex);
         // read data for one player from the file
         CRIC *player = read_one_player(infile);
         if (player == NULL) {
@@ -51,13 +62,23 @@ int process_input(void *arg) {
 
         mtx_lock(&list_mutex);
 
+        if (!running){
+            mtx_unlock(&list_mutex);
+            // Player was created but never added to the list, so free it
+            free(player->name);
+            free(player);
+            break;
+
+        }
+        
+        //insert player at head of linked list
         player->next = *head;
         *head = player;
 
         mtx_unlock(&list_mutex);
        
 
-        sleep(1);
+        sleep(1); //one input per second
     }
     fclose(infile);
     return 0;

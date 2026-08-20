@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <threads.h> 
+#include <stdlib.h>
 #include "criclist.h"
 #include "input.h"
 #include "sort.h"
 
 mtx_t list_mutex;
+int running = 1;
 
 int main(void) {
     CRIC *head = NULL;
@@ -38,6 +40,7 @@ int main(void) {
             continue;
         }
         if (input == 'q'){
+            running =0;
             break;
         }
         mtx_lock(&list_mutex);
@@ -54,6 +57,26 @@ int main(void) {
         }
         mtx_unlock(&list_mutex);
     }
+
+    // Wait for both threads to finish
+    thrd_join(input_thread, NULL);
+    printf("Input thread stopped\n");
+    thrd_join(sort_thread, NULL);
+    printf("Sort thread stopped\n");
+
+    // Free all players in the linked list
+    CRIC *current = head;
+
+    while (current != NULL) {
+        CRIC *next = current->next;
+        free(current->name);
+        free(current);
+        current = next;
+    }
+
+    // Clean up the mutex
+    mtx_destroy(&list_mutex);
+    printf("Mutex destroyed\n");
 
 
     return 0;

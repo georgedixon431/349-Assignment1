@@ -5,6 +5,7 @@
 #include "criclist.h"
 #include "sort.h"
 
+extern int running;
 extern mtx_t list_mutex;
 
 int process_sort(void *arg) {
@@ -12,7 +13,7 @@ int process_sort(void *arg) {
 
     srand((unsigned int)time(NULL));
 
-    while (1) {
+    while (running) {
         int delay_ms = 500 + rand() % 501;
 
         struct timespec delay;
@@ -23,15 +24,20 @@ int process_sort(void *arg) {
 
         mtx_lock(&list_mutex);
 
-        CRIC *current = *head;
+        CRIC **current = head;
 
-        while (current != NULL && current->next != NULL) {
+        while (*current != NULL && (*current)->next != NULL) {
 
-            if (strcmp(current->name, current->next->name) > 0) {
-                // swap player data
+            CRIC *first = *current;
+            CRIC *second = first->next;
+
+            if (strcmp(first->name, second->name) > 0) {
+                first->next = second->next;
+                second->next = first;
+                *current = second;
             }
 
-            current = current->next;
+            current = &((*current)->next);
         }
 
         mtx_unlock(&list_mutex);

@@ -6,6 +6,7 @@
 #include "input.h"
 
 extern mtx_t list_mutex; 
+extern int running;
 
 /*
  * Read a line of data from the file and create a player based on that data.
@@ -41,7 +42,7 @@ int process_input(void *arg) {
         exit(EXIT_FAILURE);
     }
 
-    while (1) {
+    while (running) {
         // read data for one player from the file
         CRIC *player = read_one_player(infile);
         if (player == NULL) {

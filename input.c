@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
+#include <threads.h>
 #include "criclist.h"
 #include "input.h"
+
+extern mtx_t list_mutex; 
 
 /*
  * Read a line of data from the file and create a player based on that data.
@@ -24,7 +26,7 @@ static CRIC *read_one_player(FILE *infile) {
 /*
  * Open input file and turn a line of data into a cricketer every second.
  */
-void *process_input(void *arg) {
+int process_input(void *arg) {
     CRIC **head;
     FILE *infile;
 
@@ -46,11 +48,16 @@ void *process_input(void *arg) {
             break;
         }
 
-        // TODO: add player to the head of the list
+        mtx_lock(&list_mutex);
+
+        player->next = *head;
+        *head = player;
+
+        mtx_unlock(&list_mutex);
        
 
         sleep(1);
     }
-
+    fclose(infile);
     return 0;
 }

@@ -3,6 +3,6 @@
 
 #define PLAYER_DATA_FILE "players.csv"
 
-void *process_input(void *arg);
+int process_input(void *arg);
 
 #endif
